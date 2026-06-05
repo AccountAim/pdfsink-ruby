@@ -1,0 +1,183 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+  # Allow manual trigger for testing
+  workflow_dispatch:
+
+# The upstream repo is not git-tagged; the pinned source comes from crates.io.
+env:
+  CRATE: pdfsink-rs
+  CRATE_VER: 0.2.8
+
+jobs:
+  # ── Job 1: Build a static pdfsink-rs binary for each platform ────────
+  build-native:
+    name: Build (${{ matrix.platform }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Linux binaries are statically linked against musl so a single
+          # build runs on any distro; they ship under the plain -linux gem
+          # platform for the widest selection coverage.
+          - platform: x86_64-linux
+            os: ubuntu-latest
+            rust_target: x86_64-unknown-linux-musl
+            use_cross: true
+
+          - platform: aarch64-linux
+            os: ubuntu-latest
+            rust_target: aarch64-unknown-linux-musl
+            use_cross: true
+
+          - platform: x86_64-darwin
+            os: macos-latest
+            rust_target: x86_64-apple-darwin
+
+          - platform: arm64-darwin
+            os: macos-latest
+            rust_target: aarch64-apple-darwin
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.rust_target }}
+
+      - name: Install cross
+        if: matrix.use_cross
+        run: cargo install cross --locked
+
+      - name: Fetch pinned crate source
+        run: |
+          curl -sSL -o crate.tar.gz \
+            "https://static.crates.io/crates/${CRATE}/${CRATE}-${CRATE_VER}.crate"
+          tar xzf crate.tar.gz
+          echo "SRC=${CRATE}-${CRATE_VER}" >> "$GITHUB_ENV"
+
+      - name: Build binary
+        run: |
+          if [ "${{ matrix.use_cross }}" = "true" ]; then
+            cross build --release --target ${{ matrix.rust_target }} --bin pdfsink-rs --manifest-path "$SRC/Cargo.toml"
+          else
+            cargo build --release --target ${{ matrix.rust_target }} --bin pdfsink-rs --manifest-path "$SRC/Cargo.toml"
+          fi
+
+      - name: Upload compiled binary
+        uses: actions/upload-artifact@v7
+        with:
+          name: native-${{ matrix.platform }}
+          path: ${{ env.SRC }}/target/${{ matrix.rust_target }}/release/pdfsink-rs
+          if-no-files-found: error
+
+  # ── Job 2: Package platform-specific gems ────────────────────────────
+  package-native:
+    name: Package (${{ matrix.platform }})
+    needs: build-native
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        platform: [x86_64-linux, aarch64-linux, x86_64-darwin, arm64-darwin]
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.3"
+
+      - name: Download compiled binary
+        uses: actions/download-artifact@v8
+        with:
+          name: native-${{ matrix.platform }}
+          path: lib/pdfsink/
+
+      - name: Make binary executable
+        run: chmod +x lib/pdfsink/pdfsink-rs
+
+      - name: Build platform gem
+        run: ruby scripts/build_native_gem.rb ${{ matrix.platform }}
+
+      - name: Upload gem
+        uses: actions/upload-artifact@v7
+        with:
+          name: gem-${{ matrix.platform }}
+          path: pkg/*.gem
+          if-no-files-found: error
+
+  # ── Job 3: Build the source gem (fallback for unsupported platforms) ─
+  package-source:
+    name: Package (source)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.3"
+
+      - name: Build source gem
+        run: gem build pdfsink.gemspec
+
+      - name: Upload gem
+        uses: actions/upload-artifact@v7
+        with:
+          name: gem-source
+          path: "*.gem"
+          if-no-files-found: error
+
+  # ── Job 4: Run specs before publishing ───────────────────────────────
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.3"
+          bundler-cache: true
+
+      - name: Build pdfsink-rs binary
+        run: bundle exec rake cargo:build
+
+      - name: Run specs
+        run: bundle exec rspec
+
+  # ── Job 5: Publish all gems to RubyGems.org ──────────────────────────
+  publish:
+    name: Publish to RubyGems.org
+    needs: [package-native, package-source, test]
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+    steps:
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.3"
+
+      - name: Download all gem artifacts
+        uses: actions/download-artifact@v8
+        with:
+          pattern: gem-*
+          path: gems/
+          merge-multiple: true
+
+      - name: Configure trusted publisher credentials
+        uses: rubygems/configure-rubygems-credentials@main
+
+      - name: Push gems
+        run: |
+          for gem in gems/*.gem; do
+            echo "Publishing $gem ..."
+            gem push "$gem"
+          done

@@ -1,0 +1,11 @@
+# Compiled CLI binary (build artifact)
+lib/pdfsink/pdfsink-rs
+
+# Cargo staging root used by extconf.rb / rake cargo:build
+ext/pdfsink/cargo-root/
+ext/pdfsink/Makefile
+
+# Bundler / gem build output
+/pkg/
+/.bundle/
+*.gem
