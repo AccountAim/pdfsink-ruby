@@ -109,7 +109,7 @@ page.search(/total:\s*\$\d+/i)
 ### Binary version
 
 ```ruby
-Pdfsink.version   # => "0.2.8"
+Pdfsink.version   # => "0.2.9"
 ```
 
 ## Rails Integration

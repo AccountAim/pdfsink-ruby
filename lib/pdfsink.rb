@@ -73,7 +73,7 @@ module Pdfsink
 
     # The version of the underlying pdfsink-rs binary the gem was built with.
     #
-    # @return [String] e.g. "0.2.8"
+    # @return [String] e.g. "0.2.9"
     def version
       Cli.version
     end
