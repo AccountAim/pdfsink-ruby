@@ -10,7 +10,7 @@ on:
 # The upstream repo is not git-tagged; the pinned source comes from crates.io.
 env:
   CRATE: pdfsink-rs
-  CRATE_VER: 0.2.8
+  CRATE_VER: 0.2.9
 
 jobs:
   # ── Job 1: Build a static pdfsink-rs binary for each platform ────────

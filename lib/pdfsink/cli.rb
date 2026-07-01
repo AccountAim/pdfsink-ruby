@@ -30,7 +30,7 @@ module Pdfsink
       # Override the resolved binary path (mainly for tests).
       attr_writer :binary
 
-      # The pdfsink-rs version string, e.g. "pdfsink-rs 0.2.8".
+      # The pdfsink-rs version string, e.g. "pdfsink-rs 0.2.9".
       #
       # The CLI has no version subcommand, so this reports the crate version
       # the gem was built against.

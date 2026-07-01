@@ -7,7 +7,7 @@ RSpec::Core::RakeTask.new(:spec)
 namespace :cargo do
   desc "Build the pdfsink-rs binary into lib/pdfsink/"
   task :build do
-    crate_ver = "0.2.8"
+    crate_ver = "0.2.9"
     bin_name  = "pdfsink-rs"
     stage     = File.expand_path("ext/pdfsink/cargo-root", __dir__)
     lib_dir   = File.expand_path("lib/pdfsink", __dir__)
