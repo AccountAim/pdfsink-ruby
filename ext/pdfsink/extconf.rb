@@ -12,7 +12,7 @@
 require "fileutils"
 
 CRATE     = "pdfsink-rs"
-CRATE_VER = "0.2.8"
+CRATE_VER = "0.2.9"
 BIN_NAME  = "pdfsink-rs"
 EXT_DIR   = __dir__
 LIB_DIR   = File.expand_path("../../lib/pdfsink", EXT_DIR)
