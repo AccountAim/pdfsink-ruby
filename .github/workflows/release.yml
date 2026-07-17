@@ -7,10 +7,13 @@ on:
   # Allow manual trigger for testing
   workflow_dispatch:
 
-# The upstream repo is not git-tagged; the pinned source comes from crates.io.
+# Built from the pinned git tag of the pdfsink-rs repo -- it carries a
+# [patch.crates-io] fix (vendored adobe-cmap-parser) that cargo strips on publish,
+# so crates.io cannot serve it.
 env:
   CRATE: pdfsink-rs
-  CRATE_VER: 0.2.9
+  CRATE_VER: 0.2.12
+  CRATE_REPO: https://github.com/AccountAim/pdfsink-rs
 
 jobs:
   # ── Job 1: Build a static pdfsink-rs binary for each platform ────────
@@ -54,11 +57,9 @@ jobs:
         if: matrix.use_cross
         run: cargo install cross --locked
 
-      - name: Fetch pinned crate source
+      - name: Fetch pinned crate source (git tag)
         run: |
-          curl -sSL -o crate.tar.gz \
-            "https://static.crates.io/crates/${CRATE}/${CRATE}-${CRATE_VER}.crate"
-          tar xzf crate.tar.gz
+          git clone --depth 1 --branch "v${CRATE_VER}" "${CRATE_REPO}" "${CRATE}-${CRATE_VER}"
           echo "SRC=${CRATE}-${CRATE_VER}" >> "$GITHUB_ENV"
 
       - name: Build binary
