@@ -1,18 +1,22 @@
 # frozen_string_literal: true
 
 # extconf.rb -- invoked by `gem install` or `bundle install` to build the
-# pdfsink-rs CLI binary from the published crate.
+# pdfsink-rs CLI binary from the pinned git tag.
 #
 # Requirements:
-#   - cargo / rustc (Rust toolchain, 1.88+)
+#   - cargo / rustc (Rust toolchain, 1.97+)
+#   - git
 #
 # Precompiled platform gems ship the binary in lib/pdfsink/ and strip this
 # extension, so this script only runs for source installs.
 
 require "fileutils"
+# RubyGems runs this from the extension dir, so resolve the version from __dir__.
+require File.expand_path("../../lib/pdfsink/version", __dir__)
 
 CRATE     = "pdfsink-rs"
-CRATE_VER = "0.2.9"
+REPO      = "https://github.com/AccountAim/pdfsink-rs"
+TAG       = "v#{Pdfsink::PDFSINK_RS_VERSION}"
 BIN_NAME  = "pdfsink-rs"
 EXT_DIR   = __dir__
 LIB_DIR   = File.expand_path("../../lib/pdfsink", EXT_DIR)
@@ -46,10 +50,13 @@ end
 stage = File.join(EXT_DIR, "cargo-root")
 FileUtils.mkdir_p(stage)
 
-puts "Installing #{CRATE} v#{CRATE_VER} (release)..."
+puts "Installing #{CRATE} #{TAG} from #{REPO} (release)..."
+# Build from the git tag, not crates.io: the crate's [patch.crates-io] fix
+# (vendored adobe-cmap-parser) is stripped on publish, so it only applies
+# when building from source.
 ok = system("cargo", "install", CRATE,
-            "--version", CRATE_VER,
-            "--bin", BIN_NAME,
+            "--git", REPO, "--tag", TAG,
+            "--bin", BIN_NAME, "--locked",
             "--root", stage,
             "--force")
 abort "ERROR: cargo install #{CRATE} failed" unless ok
