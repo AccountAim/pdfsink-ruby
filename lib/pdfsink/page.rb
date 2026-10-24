@@ -3,10 +3,11 @@
 module Pdfsink
   # A single page of a {Document}.
   #
-  # Each accessor shells out to the pdfsink-rs binary for that page; results
-  # are cached so repeated reads don't re-spawn the process. Page-level
-  # metadata (dimensions, rotation, bbox, object counts) comes from the
-  # document's +info+ payload and needs no extra spawn.
+  # Each accessor runs the pdfsink-rs binary for this page only; results are
+  # cached so repeated reads don't run it again. {Document#load_all} fills
+  # the text and tables of every page in one run. Page-level metadata
+  # (dimensions, rotation, bbox, object counts) comes from the document's
+  # +info+ payload and needs no extra run.
   #
   # @example
   #   doc  = Pdfsink::Document.open("report.pdf")
@@ -25,6 +26,7 @@ module Pdfsink
       @document = document
       @number   = number
       @meta     = meta
+      @tables   = {}
     end
 
     # @return [Float] page width in PDF points
@@ -83,7 +85,10 @@ module Pdfsink
     # @param strategy [Symbol, String, nil] table-detection strategy
     # @return [Array<Array>, nil] rows of cells
     def tables(strategy: nil)
-      Cli.table(path, number, TableStrategy.resolve(strategy))
+      strategy = TableStrategy.resolve(strategy)
+      return @tables[strategy] if @tables.key?(strategy)
+
+      @tables[strategy] = Cli.table(path, number, strategy)
     end
 
     def inspect
