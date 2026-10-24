@@ -37,36 +37,74 @@ RSpec.describe Pdfsink::Document do
       expect(doc.each_page.to_a.size).to eq(2)
     end
   end
-end
 
-RSpec.describe Pdfsink::Page do
-  describe "#extract_text" do
-    it "returns the page text" do
-      page = Pdfsink.open(fixture("simple_text.pdf")).page(1)
-      expect(page.extract_text).to be_a(String).and(satisfy { |t| !t.empty? })
+  describe "#load_all" do
+    it "runs the program once and reads text and tables from memory" do
+      expect(Pdfsink::Cli).to receive(:pages).once.and_call_original
+      %i[info text table].each { |name| expect(Pdfsink::Cli).not_to receive(name) }
+
+      doc.load_all
+      doc.pages.each do |page|
+        page.extract_text
+        page.tables
+      end
     end
-  end
 
-  describe "#extract_words" do
-    it "returns words with positions" do
-      words = Pdfsink.open(fixture("simple_text.pdf")).page(1).extract_words
-      expect(words).to be_an(Array)
-      expect(words.first).to include("text")
+    it "returns the pages" do
+      pages = doc.load_all
+      expect(pages.map(&:number)).to eq([1, 2])
+      expect(pages.first).to equal(doc.page(1))
     end
-  end
 
-  describe "#objects" do
-    it "returns a dict of page objects" do
-      objects = Pdfsink.open(fixture("objects_showcase.pdf")).page(1).objects
-      expect(objects).to be_a(Hash)
+    it "leaves info the same as the info command" do
+      expected = Pdfsink::Cli.info(doc.path)
+      doc.load_all
+      expect(doc.info).to eq(expected)
     end
-  end
 
-  describe "#tables" do
-    it "extracts a ruled table" do
-      table = Pdfsink.open(fixture("table_lines.pdf")).page(1).tables(strategy: :lines)
-      expect(table).to be_an(Array)
-      expect(table.first).to eq(%w[Name Age City])
+    %w[multipage.pdf table_lines.pdf].each do |name|
+      it "matches single-page results for #{name}" do
+        loaded = described_class.open(fixture(name))
+        loaded.load_all
+
+        loaded.pages.each do |page|
+          expect(page.extract_text).to eq(Pdfsink::Cli.text(loaded.path, page.number))
+          expect(page.tables).to eq(Pdfsink::Cli.table(loaded.path, page.number, "lines"))
+        end
+      end
+    end
+
+    it "stores tables only for the setting it loaded" do
+      doc.load_all(strategy: :text)
+      expect(Pdfsink::Cli).to receive(:table).with(doc.path, 1, "lines").once.and_call_original
+
+      doc.page(1).tables(strategy: :text)
+      doc.page(1).tables
+    end
+
+    it "fills pages created before it" do
+      page = doc.page(1)
+      doc.load_all
+      expect(Pdfsink::Cli).not_to receive(:text)
+
+      expect(doc.page(1)).to equal(page)
+      expect(page.extract_text).to eq("Page One\n")
+    end
+
+    it "loads tables found with the given strategy" do
+      loaded = described_class.open(fixture("table_lines.pdf"))
+      expect(Pdfsink::Cli).to receive(:pages).with(loaded.path, "text").and_call_original
+      loaded.load_all(strategy: :text)
+
+      expect(loaded.page(1).tables(strategy: :text)).to eq(Pdfsink::Cli.table(loaded.path, 1, "text"))
+    end
+
+    it "raises a clear error when the binary has no pages command" do
+      original = Pdfsink::Cli.binary
+      Pdfsink::Cli.binary = "/bin/true"
+      expect { doc.load_all }.to raise_error(Pdfsink::ParseError, /pages printed nothing/)
+    ensure
+      Pdfsink::Cli.binary = original
     end
   end
 end

@@ -91,6 +91,18 @@ module Pdfsink
       @tables[strategy] = Cli.table(path, number, strategy)
     end
 
+    # Store text and a table read by {Document#load_all}.
+    #
+    # @api private
+    # @param text [String]
+    # @param strategy [String] a resolved table strategy
+    # @param table [Array<Array>, nil]
+    # @return [void]
+    def preload(text:, strategy:, table:)
+      @extract_text = text
+      @tables[strategy] = table
+    end
+
     def inspect
       "#<Pdfsink::Page number=#{number} #{width}x#{height}>"
     end
