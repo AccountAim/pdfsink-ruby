@@ -30,7 +30,7 @@ module Pdfsink
       # Override the resolved binary path (mainly for tests).
       attr_writer :binary
 
-      # The pdfsink-rs version string, e.g. "pdfsink-rs 0.2.9".
+      # The pdfsink-rs version string, e.g. "0.2.20+aim.1".
       #
       # The CLI has no version subcommand, so this reports the crate version
       # the gem was built against.
@@ -92,6 +92,19 @@ module Pdfsink
       # @return [Array<Array>, nil]
       def table(path, page, strategy)
         run_json("table", path, page.to_s, strategy)
+      end
+
+      # Document metadata plus the text and largest table of every page, in
+      # one run. Same payload as {info}, with "text" and "table" added to
+      # each entry in "pages". "text" has no trailing newline, unlike {text}.
+      #
+      # @param path [String]
+      # @param strategy [String] one of "lines", "lines_strict", "text", "explicit"
+      # @return [Hash]
+      # @raise [ParseError] if the binary prints nothing (too old to have +pages+)
+      def pages(path, strategy)
+        run_json("pages", path, strategy) or
+          raise ParseError, "pdfsink-rs pages printed nothing; the binary may be older than #{PDFSINK_RS_VERSION}"
       end
 
       private

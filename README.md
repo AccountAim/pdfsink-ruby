@@ -106,10 +106,30 @@ page.search(/total:\s*\$\d+/i)
 # => [{"text" => "Total: $420", "x0" => ..., ...}]
 ```
 
+### Read every page in one run
+
+Each page method runs the pdfsink-rs binary for that page only. To read
+every page, `load_all` runs it once for the whole document:
+
+```ruby
+doc = Pdfsink.open("report.pdf")
+doc.load_all                     # one run; returns doc.pages
+doc.pages.each do |page|
+  page.extract_text              # no further runs
+  page.tables                    # no further runs (same strategy as load_all)
+end
+
+doc.load_all(strategy: :text)    # load tables found with another strategy
+```
+
+Use the page methods when you need a few pages, and `load_all` when you
+need all of them. `load_all` loads text and tables only; `extract_words`,
+`objects`, `links` and `search` still run the binary for their page.
+
 ### Binary version
 
 ```ruby
-Pdfsink.version   # => "0.2.9"
+Pdfsink.version   # => "0.2.20+aim.1"
 ```
 
 ## Rails Integration
