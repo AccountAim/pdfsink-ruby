@@ -12,7 +12,7 @@ on:
 # so crates.io cannot serve it.
 env:
   CRATE: pdfsink-rs
-  CRATE_VER: 0.2.12
+  CRATE_VER: 0.2.20+aim.1
   CRATE_REPO: https://github.com/AccountAim/pdfsink-rs
 
 jobs:
