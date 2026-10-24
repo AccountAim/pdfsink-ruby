@@ -9,3 +9,6 @@ ext/pdfsink/Makefile
 /pkg/
 /.bundle/
 *.gem
+
+# Scratch work (benchmarks, test PDFs)
+/tmp/
