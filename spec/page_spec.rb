@@ -8,6 +8,13 @@ RSpec.describe Pdfsink::Page do
       page = Pdfsink.open(fixture("simple_text.pdf")).page(1)
       expect(page.extract_text).to be_a(String).and(satisfy { |t| !t.empty? })
     end
+
+    it "returns UTF-8 text under a non-UTF-8 locale" do
+      page = Pdfsink.open(fixture("simple_text.pdf")).page(1)
+      with_default_external(Encoding::US_ASCII) do
+        expect(page.extract_text.encoding).to eq(Encoding::UTF_8)
+      end
+    end
   end
 
   describe "#extract_words" do

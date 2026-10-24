@@ -51,11 +51,14 @@ module Pdfsink
 
       # Extracted text for a single page.
       #
+      # The binary always writes UTF-8. Open3 tags its output with the process
+      # locale, which is wrong under a C locale, so the tag is set here.
+      #
       # @param path [String]
       # @param page [Integer] 1-based page number
-      # @return [String]
+      # @return [String] UTF-8
       def text(path, page)
-        run("text", path, page.to_s)
+        run("text", path, page.to_s).force_encoding(Encoding::UTF_8)
       end
 
       # Words with positions for a single page.
