@@ -129,7 +129,7 @@ need all of them. `load_all` loads text and tables only; `extract_words`,
 ### Binary version
 
 ```ruby
-Pdfsink.version   # => "0.2.20+aim.1"
+Pdfsink.version   # => "0.2.20+aim.2"
 ```
 
 ## Rails Integration
